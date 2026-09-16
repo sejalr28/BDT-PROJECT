@@ -1,4 +1,8 @@
-@"
+# Dataset (large files - download separately from LogHub)
+data/raw/
+data/processed/
+data/output/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -22,13 +26,11 @@ venv/
 # Logs
 *.log
 
-# Generated data
-data/processed/
-data/output/
-
-# Spark
+# Spark / Hadoop
 spark-warehouse/
 metastore_db/
+*.crc
+_SUCCESS
 
 # IDE
 .vscode/
@@ -37,5 +39,3 @@ metastore_db/
 # OS
 .DS_Store
 Thumbs.db
-"@ | Set-Content .gitignore
-data/raw/
