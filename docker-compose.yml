@@ -89,6 +89,8 @@ services:
     image: bde2020/spark-worker:3.3.0-hadoop3.3
     container_name: spark-worker
     depends_on: [spark-master]
+    volumes:
+      - ./:/project
     environment:
       - "SPARK_MASTER=spark://spark-master:7077"
       - SPARK_WORKER_CORES=2
