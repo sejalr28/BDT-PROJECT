@@ -193,9 +193,29 @@ API docs at `http://localhost:8000/docs`. Endpoints:
 - [x] Phase 3 — Hive batch analytics
 - [x] Phase 4 — ML anomaly detection (Random Forest + unsupervised comparison)
 - [x] Phase 5 — FastAPI backend
-- [ ] Phase 6 — Kibana dashboards
-- [ ] Phase 7 — React frontend
-- [ ] Phase 8 — Containerize backend/frontend, full docker-compose demo
+- [x] Phase 6 — Kibana dashboards
+- [x] Phase 7 — React frontend
+- [x] Phase 8 — Containerize backend/frontend, full docker-compose demo
+
+## Running the full stack (Phase 8)
+
+Backend and frontend now build as containers alongside the rest of the
+stack:
+
+```bash
+docker compose up -d --build backend frontend
+```
+
+- Frontend: http://localhost:3000
+- Backend API docs: http://localhost:8000/docs
+
+The frontend's browser-side calls still hit `http://localhost:8000`
+directly (that's fine — the browser runs on your host, not inside the
+Docker network), while the backend's own connections to Postgres and
+Elasticsearch use the `DATABASE_URL`/`ELASTICSEARCH_URL` env vars set
+in `docker-compose.yml`, pointing at the internal service names
+(`app-postgres`, `elasticsearch`) instead of the host-mapped ports used
+during local `uvicorn`/`npm run dev` development.
 
 ## Notes
 

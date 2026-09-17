@@ -192,3 +192,26 @@ services:
     ports:
       - "5433:5432"
     networks: [logplatform]
+
+  # ---------------------------------------------------------------
+  # Phase 8: Application layer (backend + frontend)
+  # ---------------------------------------------------------------
+  backend:
+    build: ./backend
+    container_name: backend
+    depends_on: [app-postgres, elasticsearch]
+    environment:
+      - DATABASE_URL=postgresql://appuser:apppass@app-postgres:5432/logplatform
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - JWT_SECRET=change-me-in-production
+    ports:
+      - "8000:8000"
+    networks: [logplatform]
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    depends_on: [backend]
+    ports:
+      - "3000:80"
+    networks: [logplatform]
