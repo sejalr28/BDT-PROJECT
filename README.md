@@ -7,6 +7,16 @@ Elasticsearch) with a FastAPI serving layer on top.
 Built as a Big Data subject project, using the [LogHub HDFS dataset](https://github.com/logpai/loghub)
 (11M+ raw log lines, 575K labeled blocks) as the working dataset.
 
+## Screenshots
+
+| Kibana dashboard | Spark standalone cluster |
+|---|---|
+| ![Kibana dashboard](Screenshots/kibana-dashboard.png) | ![Spark cluster UI](Screenshots/spark-cluster-ui.png) |
+
+| API docs (Swagger) | ML predictions served via API |
+|---|---|
+| ![API docs](Screenshots/api-swagger-docs.png) | ![Anomalies API response](Screenshots/anomalies-api-response.png) |
+
 ## Architecture
 
 ```text
@@ -43,7 +53,7 @@ HDFS.log (raw logs)
         FastAPI backend  ◄──── JWT auth, /logs, /stats, /anomalies, /alerts
               │
               ▼
-        React dashboard (planned)
+        React dashboard (LogWatch console)
 ```
 
 Two independent consumers read the same Kafka topic (a standard fan-out
@@ -93,10 +103,19 @@ enterprise-log-analytics/
 │   ├── train_random_forest.py   # supervised anomaly classifier (Spark MLlib)
 │   ├── unsupervised_compare.py  # Isolation Forest + K-Means comparison
 │   └── score_and_export.py      # scores all blocks, writes to Postgres
-└── backend/
-    └── app/
-        ├── main.py, config.py, database.py, models.py, schemas.py, auth.py
-        └── routers/          # auth, logs, stats, anomalies, alerts
+├── backend/
+│   ├── Dockerfile
+│   └── app/
+│       ├── main.py, config.py, database.py, models.py, schemas.py, auth.py
+│       └── routers/          # auth, logs, stats, anomalies, alerts
+├── frontend/                 # React + Vite "LogWatch" console
+│   ├── Dockerfile, nginx.conf
+│   └── src/
+│       ├── pages/            # Overview, LogSearch, Anomalies, Alerts, Login
+│       ├── components/       # Layout, ProtectedRoute
+│       ├── context/          # AuthContext
+│       └── services/         # api.js (Axios + JWT interceptor)
+└── Screenshots/         # README images
 ```
 
 ## Dataset
@@ -185,6 +204,52 @@ API docs at `http://localhost:8000/docs`. Endpoints:
 - `GET /anomalies` — ML-predicted anomalous blocks (from Postgres)
 - `GET/POST/DELETE /alerts` — per-user alert configuration (CRUD)
 
+### Phase 6 — Kibana dashboards
+
+In Kibana (`http://localhost:5601`): Stack Management → Index Patterns
+→ create one for `hdfs-logs-parsed` with `indexed_at` as the time
+field. Then build 3 visualizations — a date-histogram line chart
+("Event Volume Over Time"), a terms-aggregation pie chart on `level`
+("Log Level Breakdown"), and a terms-aggregation bar chart on
+`event_id` ("Top Event Templates") — and combine them into a saved
+dashboard. See the screenshot above.
+
+### Phase 7 — React frontend ("LogWatch" console)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open `http://localhost:5173`. Dark ops-console UI: Overview (live
+charts), Log Search, Anomalies (ML predictions with confidence
+filtering), and Alerts (CRUD rule builder) — all behind JWT-gated
+routes.
+
+### Phase 8 — Containerize backend + frontend
+
+Backend and frontend build as containers alongside the rest of the
+stack:
+
+```bash
+docker compose up -d --build backend frontend
+```
+
+- Frontend: `http://localhost:3000`
+- Backend API docs: `http://localhost:8000/docs`
+
+The frontend's browser-side calls still hit `http://localhost:8000`
+directly (that's fine — the browser runs on your host, not inside the
+Docker network), while the backend's own connections to Postgres and
+Elasticsearch use the `DATABASE_URL`/`ELASTICSEARCH_URL` env vars set
+in `docker-compose.yml`, pointing at the internal service names
+(`app-postgres`, `elasticsearch`) instead of the host-mapped ports used
+during local `uvicorn`/`npm run dev` development.
+
+To bring up the entire platform in one shot:
+```bash
+docker compose up -d
+```
+
 ## Roadmap
 
 - [x] Phase 0 — Environment scaffold
@@ -197,25 +262,20 @@ API docs at `http://localhost:8000/docs`. Endpoints:
 - [x] Phase 7 — React frontend
 - [x] Phase 8 — Containerize backend/frontend, full docker-compose demo
 
-## Running the full stack (Phase 8)
-
-Backend and frontend now build as containers alongside the rest of the
-stack:
+## Running the full stack
 
 ```bash
-docker compose up -d --build backend frontend
+docker compose up -d --build
 ```
 
-- Frontend: http://localhost:3000
-- Backend API docs: http://localhost:8000/docs
+Wait ~60-90 seconds for HDFS to exit safe mode and for Elasticsearch/Kibana
+to finish their (slow) first boot, then:
 
-The frontend's browser-side calls still hit `http://localhost:8000`
-directly (that's fine — the browser runs on your host, not inside the
-Docker network), while the backend's own connections to Postgres and
-Elasticsearch use the `DATABASE_URL`/`ELASTICSEARCH_URL` env vars set
-in `docker-compose.yml`, pointing at the internal service names
-(`app-postgres`, `elasticsearch`) instead of the host-mapped ports used
-during local `uvicorn`/`npm run dev` development.
+- Frontend: `http://localhost:3000`
+- Backend API docs: `http://localhost:8000/docs`
+- Kibana: `http://localhost:5601`
+- Spark master UI: `http://localhost:8080`
+- HDFS namenode UI: `http://localhost:9870`
 
 ## Notes
 
